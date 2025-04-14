@@ -1,0 +1,13 @@
+name: ANOVA
+title: ANOVA
+username: zuleeex
+account: zuleeex
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 14514240
+bundleId: 10114674
+url: https://zuleeex.shinyapps.io/ANOVA/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: Cognitive Score.xlsx|shiny.png
