@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi-cuadrado</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jstat/dist/jstat.min.js"></script>
+    <link rel="stylesheet" href="estilo.css">
+    <script defer src="https://app.embed.im//snow.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+</head>
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Segoe UI', sans-serif;
+        background: #121212;
+        color: #e0e0e0;
+    }
+
+    .container {
+        max-width: 900px;
+        margin: auto;
+        padding: 2rem;
+        background-color: #1e1e1e;
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    }
+
+    h2, h5 {
+        text-align: center;
+        color: #ffffff;
+        margin-bottom: 20px;
+    }
+
+    .input-group {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+
+    input[type="number"] {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 10px;
+        background-color: #2a2a2a;
+        color: white;
+    }
+
+    button {
+        background: linear-gradient(145deg, #03dac6, #018786);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 20px;
+        font-size: 1rem;
+        cursor: pointer;
+        display: block;
+        width: 100%;
+        margin: 10px auto;
+        transition: all 0.3s ease;
+    }
+
+    button:hover {
+        background: linear-gradient(145deg, #018786, #03dac6);
+        transform: scale(1.02);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background-color: #2c2c2c;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    th, td {
+        padding: 10px;
+        border: 1px solid #444;
+        text-align: center;
+    }
+
+    th {
+        background-color: #333;
+    }
+
+    td input {
+        background-color: #444;
+        color: white;
+        border: none;
+        padding: 8px;
+        width: 100%;
+        border-radius: 5px;
+    }
+
+    .results-container {
+        background-color: #212121;
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 20px;
+        border-left: 5px solid #03dac6;
+    }
+
+    canvas {
+        margin-top: 30px;
+        background-color: #fff;
+        border-radius: 10px;
+        padding: 10px;
+    }
+
+    .loader {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 40px;
+        display: none;
+    }
+
+    .loader__bar {
+        width: 10px;
+        height: 40px;
+        margin: 0 3px;
+        background: #03dac6;
+        animation: loader 1s infinite ease-in-out;
+    }
+
+    .loader__ball {
+        width: 12px;
+        height: 12px;
+        background: #ff0266;
+        border-radius: 50%;
+        animation: bounce 0.6s infinite alternate;
+        margin-left: 10px;
+    }
+
+    @keyframes loader {
+        0% { transform: scaleY(1); }
+        50% { transform: scaleY(1.5); }
+        100% { transform: scaleY(1); }
+    }
+
+    @keyframes bounce {
+        from { transform: translateY(0); }
+        to { transform: translateY(-15px); }
+    }
+</style>
+
+<body>
+    <div class="container">
+        <h2>Prueba Chi-cuadrado</h2>
+
+        <div class="input-group">
+            <input type="number" id="rows" class="form-control" placeholder="Número de filas" min="2">
+            <input type="number" id="cols" class="form-control" placeholder="Número de columnas" min="2">
+        </div>
+
+        <button id="generate-table" class="form-control">Generar tabla</button>
+
+        <div id="table-container"></div>
+
+        <button id="calculate-chi" class="form-control" style="display: none;">Calcular Chi-cuadrado</button>
+
+        <div id="results" class="results-container" style="display: none;"></div>
+
+        <div class="loader">
+            <div class="loader__bar"></div>
+            <div class="loader__bar"></div>
+            <div class="loader__bar"></div>
+            <div class="loader__bar"></div>
+            <div class="loader__bar"></div>
+            <div class="loader__ball"></div>
+         </div>
+         
+
+        
+         <button id="view-graph" class="form-control" style="display: none;">Ver Gráfica</button>
+
+         
+
+
+        <canvas id="chi-chart" width="400" height="200"></canvas>
+
+        
+        <button id="download-file" class="form-control" style="display: none;">Descargar Resultados</button>
+    
+        <button id="download-graph" class="form-control" style="display: none;">Descargar Gráfico</button>
+
+    
+    </div>
+
+    <script>
+        let rows, cols, observed, expected, chiSquared, chart;
+
+        document.getElementById('generate-table').addEventListener('click', () => {
+            rows = parseInt(document.getElementById('rows').value);
+            cols = parseInt(document.getElementById('cols').value);
+            const container = document.getElementById('table-container');
+
+            if (rows > 5 || cols > 5 || rows < 2 || cols < 2) {
+                alert("Por favor, ingresa valores entre 2 y 5.");
+                return;
+            }
+
+            container.innerHTML = '<h5>Ingresa las Frecuencias Observadas:</h5>';
+            const table = document.createElement('table');
+            table.className = 'table table-bordered';
+
+            for (let i = 0; i <= rows; i++) {
+                const row = document.createElement('tr');
+                for (let j = 0; j <= cols; j++) {
+                    const cell = document.createElement(i === 0 || j === 0 ? 'th' : 'td');
+                    if (i === 0 && j > 0) {
+                        cell.textContent = `Col ${j}`;
+                    } else if (j === 0 && i > 0) {
+                        cell.textContent = `Fila ${i}`;
+                    } else if (i > 0 && j > 0) {
+                        const input = document.createElement('input');
+                        input.type = 'number';
+                        input.className = 'form-control';
+                        input.id = `cell-${i}-${j}`;
+                        cell.appendChild(input);
+                    }
+                    row.appendChild(cell);
+                }
+                table.appendChild(row);
+            }
+            container.appendChild(table);
+            document.getElementById('calculate-chi').style.display = 'block';
+        });
+
+        
+
+        document.getElementById('calculate-chi').addEventListener('click', () => {
+            const alpha = 0.05;
+            observed = [];
+            expected = [];
+            chiSquared = 0;
+
+            let total = 0;
+            for (let i = 1; i <= rows; i++) {
+                observed.push([]);
+                for (let j = 1; j <= cols; j++) {
+                    const value = parseFloat(document.getElementById(`cell-${i}-${j}`).value);
+                    if (isNaN(value) || value < 0) {
+                        alert("Por favor, ingresa valores válidos en la tabla.");
+                        return;
+                    }
+                    observed[i - 1].push(value);
+                    total += value;
+                }
+            }
+
+            const rowSums = observed.map(row => row.reduce((a, b) => a + b, 0));
+            const colSums = observed[0].map((_, col) => observed.reduce((a, b) => a + b[col], 0));
+
+            for (let i = 0; i < rows; i++) {
+                expected.push([]);
+                for (let j = 0; j < cols; j++) {
+                    const expectedValue = (rowSums[i] * colSums[j]) / total;
+                    expected[i].push(expectedValue);
+                    chiSquared += Math.pow(observed[i][j] - expectedValue, 2) / expectedValue;
+                }
+            }
+
+            const degreesOfFreedom = (rows - 1) * (cols - 1);
+            const criticalValue = jStat.chisquare.inv(1 - alpha, degreesOfFreedom);
+            const result = chiSquared > criticalValue ? "Rechazar H₀" : "No Rechazar H₀";
+
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('results').innerHTML = `
+                <h5>Resultados:</h5>
+                <p><strong>Valor Calculado de Chi Cuadrado:</strong> ${chiSquared.toFixed(2)}</p>
+                <p><strong>Grados de Libertad:</strong> ${degreesOfFreedom}</p>
+                <p><strong>Valor Crítico (α=0.05):</strong> ${criticalValue}</p>
+                <p><strong>Conclusión:</strong> ${result}</p>
+            `;
+
+            document.getElementById('view-graph').style.display = 'block';
+        });
+
+       
+        window.onload = function() {
+            document.querySelector(".loader").style.display = "none";  // Ocultar cargador
+    
+};
+
+
+        document.getElementById('view-graph').addEventListener('click', () => {
+            if (chart) chart.destroy();
+
+            const df = (rows - 1) * (cols - 1);
+            const alpha = 0.05;
+
+            const criticalValue = jStat.chisquare.inv(1 - alpha, df);
+            const pValue = 1 - jStat.chisquare.cdf(chiSquared, df);
+
+            const xValues = [];
+            const yValues = [];
+            const criticalRegion = [];
+            const experimentalRegion = [];
+
+            for (let x = 0; x <= criticalValue + 10; x += 0.1) {
+                const density = chiSquaredDensity(x, df);
+                xValues.push(x);
+                yValues.push(density);
+                criticalRegion.push(x > criticalValue ? density : 0);
+                experimentalRegion.push(x <= chiSquared ? density : 0);
+            }
+
+            const ctx = document.getElementById('chi-chart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: xValues,
+                    datasets: [
+                        {
+                            label: "Distribución Chi-cuadrado",
+                            data: yValues,
+                            borderColor: "blue",
+                            borderWidth: 2,
+                            fill: false,
+                        },
+                        {
+                            label: "Región Crítica",
+                            data: criticalRegion,
+                            backgroundColor: "rgba(255, 0, 0, 0.3)",
+                            borderWidth: 0,
+                            fill: true,
+                        },
+                        {
+                            label: "Región Experimental",
+                            data: experimentalRegion,
+                            backgroundColor: "rgba(0, 255, 0, 0.3)",
+                            borderWidth: 0,
+                            fill: true,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: true },
+                        title: {
+                            display: true,
+                            text: 'Distribución Chi-cuadrado con Región Crítica',
+                        },
+                    },
+                },
+            });
+        });
+
+        document.getElementById('download-file').addEventListener('click', () => {
+   
+    const resultsText = `
+        Resultados de la Prueba Chi-cuadrado:
+        -----------------------------------
+        Valor Calculado de Chi Cuadrado: ${chiSquared.toFixed(2)}
+        Grados de Libertad: ${(rows - 1) * (cols - 1)}
+        Valor Crítico (α=0.05): ${jStat.chisquare.inv(1 - 0.05, (rows - 1) * (cols - 1))}
+        Conclusión: ${chiSquared > jStat.chisquare.inv(1 - 0.05, (rows - 1) * (cols - 1)) ? "Rechazar H₀" : "No Rechazar H₀"}
+    `;
+
+    
+    const blob = new Blob([resultsText], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'resultados_chi_cuadrado.txt'; 
+
+    
+    link.click();
+});
+
+document.getElementById('download-file').style.display = 'block';
+
+
+document.getElementById('download-graph').addEventListener('click', () => {
+    const chartCanvas = document.getElementById('chi-chart'); 
+    const chartImage = chartCanvas.toDataURL('image/png'); 
+    
+
+    const link = document.createElement('a');
+    link.href = chartImage;
+    link.download = 'grafico_chi_cuadrado.png'; 
+
+    
+    link.click();
+});
+
+document.getElementById('download-graph').style.display = 'block';
+
+
+
+        function chiSquaredDensity(x, df) {
+            return jStat.chisquare.pdf(x, df);
+        }
+    </script>
+</body>
+</html>

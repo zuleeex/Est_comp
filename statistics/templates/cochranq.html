@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Prueba de Cochran Q</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f5f8fa;
+      padding: 30px;
+    }
+
+    .container {
+      max-width: 900px;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    textarea {
+      width: 100%;
+      height: 200px;
+      margin: 20px 0;
+      font-family: monospace;
+      padding: 10px;
+      font-size: 15px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    #resultado {
+      margin-top: 25px;
+      padding: 20px;
+      background: #f0f9ff;
+      border-left: 6px solid #3498db;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>📈 Prueba de Cochran Q</h1>
+  <p>
+    Introduce una tabla con datos dicotómicos (0 = fracaso, 1 = éxito) separados por comas, una línea por participante.<br>
+    <strong>Ejemplo:</strong><br>
+    <code>1,0,1<br>0,1,0<br>1,1,1</code>
+  </p>
+  
+  <textarea id="datos" placeholder="Introduce los datos aquí..."></textarea>
+  <button onclick="calcularCochranQ()">Calcular Q de Cochran</button>
+
+  <div id="resultado"></div>
+
+  <canvas id="grafico" style="margin-top: 40px; max-height: 300px;"></canvas>
+</div>
+
+<script>
+  function calcularCochranQ() {
+    const texto = document.getElementById("datos").value.trim();
+    const filas = texto.split("\n").map(f => f.split(",").map(Number));
+    const k = filas[0].length;
+    const n = filas.length;
+
+    if (k < 3) {
+      document.getElementById("resultado").innerHTML = "<span style='color:red;'>⚠️ Se requieren al menos 3 tratamientos para aplicar Cochran Q.</span>";
+      return;
+    }
+
+    let sumaColumnas = Array(k).fill(0);
+    let sumaFilas = Array(n).fill(0);
+    let total = 0;
+
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < k; j++) {
+        sumaColumnas[j] += filas[i][j];
+        sumaFilas[i] += filas[i][j];
+        total += filas[i][j];
+      }
+    }
+
+    const A = sumaColumnas.reduce((acc, val) => acc + val * val, 0);
+    const B = sumaFilas.reduce((acc, val) => acc + val * val, 0);
+
+    const Q = (k - 1) * ((k * A) - (total * total)) / ((k * B) - (total * total));
+    const valorCritico = 7.815; // Chi-cuadrado gl=k-1, para k=4 sería 3 grados libertad y alpha=0.05
+
+    const significativa = Q > valorCritico;
+
+    document.getElementById("resultado").innerHTML = `
+      <h2>🔍 Resultado de Cochran Q</h2>
+      <ul>
+        <li>Participantes: <strong>${n}</strong></li>
+        <li>Tratamientos: <strong>${k}</strong></li>
+        <li>Estadístico Q: <strong>${Q.toFixed(4)}</strong></li>
+        <li>Valor crítico (α = 0.05): <strong>${valorCritico}</strong></li>
+        <li>¿Significativo?: <strong style="color: ${significativa ? 'green' : 'gray'}">
+          ${significativa ? "Sí ✅ (Se rechaza H₀)" : "No ❌ (No se rechaza H₀)"}
+        </strong></li>
+      </ul>
+      <p><strong>Conclusión:</strong> ${significativa ? "Hay diferencias significativas entre los tratamientos." : "No se encontraron diferencias significativas."}</p>
+    `;
+
+    // Graficar proporciones
+    const labels = Array.from({length: k}, (_, i) => "Tratamiento " + (i + 1));
+    const datosGrafico = {
+      labels: labels,
+      datasets: [{
+        label: 'Suma de éxitos por tratamiento',
+        data: sumaColumnas,
+        backgroundColor: '#3498db'
+      }]
+    };
+
+    new Chart(document.getElementById('grafico'), {
+      type: 'bar',
+      data: datosGrafico,
+      options: {
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  }
+</script>
+</body>
+</html>

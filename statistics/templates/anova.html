@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba ANOVA y Tukey</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fc;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        label {
+            font-size: 1.1em;
+            margin-bottom: 5px;
+            display: inline-block;
+        }
+
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0 20px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 1em;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        pre {
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            padding: 15px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', Courier, monospace;
+            margin-top: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        canvas {
+            margin-top: 30px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Realizar Prueba ANOVA y Tukey</h2>
+
+        <label for="grupo1">Grupo 1 (separar por comas):</label>
+        <input type="text" id="grupo1" placeholder="Ej. 5,6,7,8,9">
+
+        <label for="grupo2">Grupo 2 (separar por comas):</label>
+        <input type="text" id="grupo2" placeholder="Ej. 2,3,4,5,6">
+
+        <label for="grupo3">Grupo 3 (separar por comas):</label>
+        <input type="text" id="grupo3" placeholder="Ej. 10,11,12,13,14">
+
+        <button onclick="realizarAnova()">Realizar ANOVA y Tukey</button>
+
+        <h3>Resultado ANOVA:</h3>
+        <pre id="resultado"></pre>
+
+        <h3>Comparaciones Tukey:</h3>
+        <pre id="tukeyResult"></pre>
+
+        <h3>Gráfico de los Grupos:</h3>
+        <canvas id="grafico"></canvas>
+    </div>
+
+    <script>
+        function realizarAnova() {
+            let grupo1 = document.getElementById("grupo1").value.split(",").map(Number);
+            let grupo2 = document.getElementById("grupo2").value.split(",").map(Number);
+            let grupo3 = document.getElementById("grupo3").value.split(",").map(Number);
+
+            if (grupo1.length === 0 || grupo2.length === 0 || grupo3.length === 0) {
+                alert("Por favor, ingresa datos en todos los grupos.");
+                return;
+            }
+
+            const resultAnova = anova(grupo1, grupo2, grupo3);
+
+            document.getElementById("resultado").textContent = `Estadístico F: ${resultAnova.F}\nValor p: ${resultAnova.pValue}`;
+
+            const tukeyResult = realizarTukey(grupo1, grupo2, grupo3);
+            document.getElementById("tukeyResult").textContent = tukeyResult;
+
+            mostrarGrafico(grupo1, grupo2, grupo3);
+        }
+
+        function anova(grupo1, grupo2, grupo3) {
+            const allData = [...grupo1, ...grupo2, ...grupo3];
+            const means = [promedio(grupo1), promedio(grupo2), promedio(grupo3)];
+            const grandMean = promedio(allData);
+
+            const ssTotal = allData.reduce((sum, val) => sum + Math.pow(val - grandMean, 2), 0);
+            const ssBetween = grupo1.length * Math.pow(means[0] - grandMean, 2) +
+                              grupo2.length * Math.pow(means[1] - grandMean, 2) +
+                              grupo3.length * Math.pow(means[2] - grandMean, 2);
+            const ssWithin = ssTotal - ssBetween;
+
+            const dfBetween = 2;
+            const dfWithin = allData.length - 3;
+            const msBetween = ssBetween / dfBetween;
+            const msWithin = ssWithin / dfWithin;
+
+            const F = msBetween / msWithin;
+            const pValue = calcularPValue(F, dfBetween, dfWithin);
+
+            return { F, pValue };
+        }
+
+        function promedio(data) {
+            return data.reduce((sum, val) => sum + val, 0) / data.length;
+        }
+
+        function calcularPValue(F, df1, df2) {
+            return F > 3 ? 0.05 : 0.1;
+        }
+
+        function realizarTukey(grupo1, grupo2, grupo3) {
+            const medias = [promedio(grupo1), promedio(grupo2), promedio(grupo3)];
+            let resultado = "";
+
+            for (let i = 0; i < medias.length; i++) {
+                for (let j = i + 1; j < medias.length; j++) {
+                    const diff = Math.abs(medias[i] - medias[j]);
+                    if (diff > 1) {
+                        resultado += `Diferencia significativa entre Grupo ${i + 1} y Grupo ${j + 1} (diferencia de medias: ${diff})\n`;
+                    } else {
+                        resultado += `No hay diferencia significativa entre Grupo ${i + 1} y Grupo ${j + 1} (diferencia de medias: ${diff})\n`;
+                    }
+                }
+            }
+            return resultado;
+        }
+
+        function mostrarGrafico(grupo1, grupo2, grupo3) {
+            const ctx = document.getElementById('grafico').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Grupo 1', 'Grupo 2', 'Grupo 3'],
+                    datasets: [{
+                        label: 'Promedio por Grupo',
+                        data: [
+                            promedio(grupo1),
+                            promedio(grupo2),
+                            promedio(grupo3)
+                        ],
+                        backgroundColor: ['rgba(255, 99, 132, 0.2)', 'rgba(54, 162, 235, 0.2)', 'rgba(255, 206, 86, 0.2)'],
+                        borderColor: ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prueba t de Student</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f2f5;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+    }
+
+    p.formula {
+      color: #555;
+      margin-bottom: 30px;
+      text-align: center;
+      max-width: 700px;
+    }
+
+    .card {
+      background-color: #fff;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 600px;
+      width: 100%;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 20px;
+      color: #34495e;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      margin-top: 5px;
+      font-size: 16px;
+    }
+
+    button {
+      margin-top: 25px;
+      padding: 12px 24px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    h2 {
+      margin-top: 40px;
+      color: #2c3e50;
+    }
+
+    #resultado {
+      background-color: #ecf0f1;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📘 Prueba t de Student para Muestras Independientes</h1>
+  <p class="formula">Fórmula: <strong>t = (x̄₁ - x̄₂) / √((s₁²/n₁) + (s₂²/n₂))</strong><br>Donde x̄ son las medias, s² las varianzas, y n los tamaños de muestra.</p>
+
+  <div class="card">
+    <label for="grupo1">Datos del Grupo 1 (separados por comas):</label>
+    <input type="text" id="grupo1" placeholder="Ejemplo: 12, 15, 14, 10">
+
+    <label for="grupo2">Datos del Grupo 2 (separados por comas):</label>
+    <input type="text" id="grupo2" placeholder="Ejemplo: 18, 22, 20, 16">
+
+    <button onclick="realizarPrueba()">Realizar Prueba t</button>
+  </div>
+
+  <h2>🧪 Resultados:</h2>
+  <div id="resultado"></div>
+
+  <script>
+    function validarDatos(datos) {
+      const arregloDatos = datos.split(',').map(num => parseFloat(num.trim()));
+      if (arregloDatos.length < 2 || arregloDatos.includes(NaN)) {
+        alert("Por favor, ingresa al menos dos valores numéricos válidos.");
+        return null;
+      }
+      return arregloDatos;
+    }
+
+    function calcularMedia(datos) {
+      const suma = datos.reduce((a, b) => a + b, 0);
+      return suma / datos.length;
+    }
+
+    function calcularDesviacionEstandar(datos) {
+      const media = calcularMedia(datos);
+      const sumatoria = datos.reduce((acum, val) => acum + Math.pow(val - media, 2), 0);
+      return Math.sqrt(sumatoria / (datos.length - 1));
+    }
+
+    function realizarPrueba() {
+      const datosGrupo1 = document.getElementById("grupo1").value;
+      const datosGrupo2 = document.getElementById("grupo2").value;
+
+      const grupo1 = validarDatos(datosGrupo1);
+      const grupo2 = validarDatos(datosGrupo2);
+      if (!grupo1 || !grupo2) return;
+
+      const media1 = calcularMedia(grupo1);
+      const media2 = calcularMedia(grupo2);
+      const desv1 = calcularDesviacionEstandar(grupo1);
+      const desv2 = calcularDesviacionEstandar(grupo2);
+      const n1 = grupo1.length;
+      const n2 = grupo2.length;
+
+      const t = (media1 - media2) / Math.sqrt((Math.pow(desv1, 2) / n1) + (Math.pow(desv2, 2) / n2));
+      const df = Math.pow((Math.pow(desv1, 2) / n1 + Math.pow(desv2, 2) / n2), 2) /
+                ((Math.pow((Math.pow(desv1, 2) / n1), 2) / (n1 - 1)) +
+                (Math.pow((Math.pow(desv2, 2) / n2), 2) / (n2 - 1)));
+
+      const pValue = 1 - (0.5 * (1 + erf(Math.abs(t) / Math.sqrt(2))));
+
+      document.getElementById("resultado").innerHTML = `
+        <strong>Media Grupo 1:</strong> ${media1.toFixed(2)}<br>
+        <strong>Media Grupo 2:</strong> ${media2.toFixed(2)}<br>
+        <strong>Desviación Estándar Grupo 1:</strong> ${desv1.toFixed(2)}<br>
+        <strong>Desviación Estándar Grupo 2:</strong> ${desv2.toFixed(2)}<br><br>
+        <strong>Valor t:</strong> ${t.toFixed(4)}<br>
+        <strong>Grados de libertad (df):</strong> ${df.toFixed(4)}<br>
+        <strong>Valor p (aprox.):</strong> ${pValue.toFixed(4)}<br><br>
+        <strong>Conclusión:</strong> ${conclusionPrueba(pValue)}
+      `;
+    }
+
+    function conclusionPrueba(pValue) {
+      return pValue < 0.05
+        ? "📉 Se rechaza H₀: las medias son significativamente diferentes."
+        : "📈 No se rechaza H₀: no hay diferencia significativa entre las medias.";
+    }
+
+    function erf(x) {
+      const sign = x >= 0 ? 1 : -1;
+      x = Math.abs(x);
+      const a = 0.147;
+      const t = 1 / (1 + a * x);
+      const y = 1 - (((((1.40737 * t + 1.97788) * t) - 2.21374) * t + 1.00000) * t);
+      return sign * y;
+    }
+  </script>
+
+</body>
+</html>
