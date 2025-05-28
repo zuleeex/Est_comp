@@ -355,7 +355,7 @@ HTML_PAGE = """
 </div>
 
 <div id="status">Estado: Detenida</div>
-
+<div id="graph" style="width: 100%; height: 100%;"></div>
 <div id="graph"></div>
 
 <h2 style="text-align:center;">Tasas de Natalidad y Mortalidad</h2>
@@ -572,6 +572,58 @@ descargarCsvBtn.onclick = () => {
     dlAnchorElem.click();
 }
 
+function actualizarGraficas(data, iteracion) {
+    const x = [];
+    const y = [];
+    const colores = [];
+
+
+
+    for (let i = 0; i < TAMANIO_MUNDO; i++) {
+        for (let j = 0; j < TAMANIO_MUNDO; j++) {
+            x.push(i);
+            y.push(j);
+            if (data.grilla[i][j].pasto) {
+                colores.push('green'); // Pasto
+            } else if (data.grilla[i][j].animal && data.grilla[i][j].animal.tipo === PRESA) {
+                colores.push('blue'); // Presa
+            } else if (data.grilla[i][j].animal && data.grilla[i][j].animal.tipo === DEPREDADOR) {
+                colores.push('red'); // Depredador
+            } else {
+                colores.push('white'); // Vacío
+            }
+        }
+    }
+
+
+
+    const trace = {
+        x: x,
+        y: y,
+        mode: 'markers',
+        marker: {
+            size: 10,
+            color: colores,
+            line: { width: 1 }
+        },
+        type: 'scatter'
+    };
+
+
+
+    const layout = {
+        title: 'Estado del Mundo',
+        xaxis: { title: 'X' },
+        yaxis: { title: 'Y' },
+        showlegend: false,
+        height: 600,
+        width: 600
+    };
+
+
+
+    Plotly.newPlot('graph', [trace], layout);
+}
 
 </script>
 </body>
